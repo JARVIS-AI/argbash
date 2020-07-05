@@ -3,7 +3,9 @@ NUL =
 # SC2015: Note that A && B || C is not if-then-else. C may run when A is true.
 SHELLCHECK_EXCLUDE_CHECKS_ARGUMENT = -e 2015
 
-SHELLCHECK=$(shell shellcheck -V > /dev/null && echo "shellcheck -x $(SHELLCHECK_EXCLUDE_CHECKS_ARGUMENT)")
+SHELLCHECK = $(shell shellcheck -V > /dev/null && echo "shellcheck -x $(SHELLCHECK_EXCLUDE_CHECKS_ARGUMENT)")
+
+DEFINE_SCRIPT_DIR_FORM ?= DEFINE_SCRIPT_DIR$(shell readlink -e /dev/null > /dev/null && echo "_GNU")
 
 M4_SRC = \
 	../src/output-strip-none.m4 \
@@ -14,9 +16,12 @@ M4_SRC = \
 	$(NUL)
 
 M4_SRC += \
+	../src/output-bash-script.m4 \
 	../src/output-completion.m4 \
 	../src/output-docopt.m4 \
-	../src/output-bash-script.m4 \
+	../src/output-manpage.m4 \
+	../src/output-manpage-defs.m4 \
+	../src/output-posix-script.m4 \
 	$(NUL)
 
 # generate using
@@ -27,6 +32,7 @@ M4_SRC += \
 	../src/collectors.m4 \
 	../src/constants.m4 \
 	../src/default_settings.m4 \
+	../src/docopt.m4 \
 	../src/env_vars.m4 \
 	../src/function_generators.m4 \
 	../src/list.m4 \
@@ -44,7 +50,7 @@ ROOT ?= /
 
 A_INIT = ../bin/argbash-init
 GENPARSE = ../bin/argbash
-COMPLETION = argbash.sh
+COMPLETION = argbash
 INSTALL_COMPLETION ?= no
 ARGBASH_EXEC ?= $(GENPARSE)
 ARGBASH_INIT_EXEC ?= $(A_INIT)
@@ -55,9 +61,14 @@ EXAMPLES = \
 	$(NUL)
 
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+MANPAGE = argbash.1.gz
 
 $(GENPARSE): ../src/argbash.m4 $(M4_SRC)
-	bash $(GENPARSE) $< -o argbash.temp && mv argbash.temp $@
+	ARGBASH_INTENDED_DESTINATION="$@" bash $(GENPARSE) $< -o argbash.temp && mv argbash.temp $@
+
+# TODO: Figure out how to use the GNU version of DEFINE_SCRIPT_DIR based on autodetection.
+../src/argbash.m4.script-dir: ../src/argbash.m4
+	sed "s/\\bDEFINE_SCRIPT_DIR\\b/$(DEFINE_SCRIPT_DIR_FORM)/" $< > $@
 
 $(A_INIT): ../src/argbash-init.m4 $(GENPARSE)
 	$(GENPARSE) $< -o $@
@@ -76,14 +87,14 @@ ARGBASH_TO = $(foreach ver,$(lesser_versions),../bin/argbash-$(ver)to$(major_ver
 CHANGELOG = ../ChangeLog
 
 %-standalone.sh: %-standalone.m4 $(GENPARSE)
-	$(ARGBASH_EXEC) $< -o $@ --library
+	$(ARGBASH_EXEC) $< -o $@ --strip user-content
 
 # argbash-init uses the -parsing suffix to denote standalone parsing sections of scripts
 %-parsing.sh: %-parsing.m4 $(GENPARSE)
-	$(ARGBASH_EXEC) $< -o $@ --library
+	$(ARGBASH_EXEC) $< -o $@ --strip user-content
 
 %-standalone2.sh: %-standalone.sh $(GENPARSE)
-	$(ARGBASH_EXEC) $< -o $@ --library
+	$(ARGBASH_EXEC) $< -o $@ --strip user-content
 
 %.sh: %.m4 $(GENPARSE)
 	$(ARGBASH_EXEC) $< -o $@
@@ -131,8 +142,8 @@ develop: $(ARGBASH_TO)
 	echo '#!/bin/bash' > "$(ROOT)/$(PREFIX)/bin/argbash"
 	echo '$(abspath $(ROOT_DIR)/$(GENPARSE)) "$$@"' >> "$(ROOT)/$(PREFIX)/bin/argbash"
 	chmod a+x "$(ROOT)/$(PREFIX)/bin/argbash"
-	test -z "$(ARGBASH_TO)" || ln -s -r $(ARGBASH_TO) "$(ROOT)/$(PREFIX)/bin"
-	ln -s -r $(A_INIT) "$(ROOT)/$(PREFIX)/bin"
+	test -z "$(ARGBASH_TO)" || ln -s $(abspath $(ARGBASH_TO)) "$(ROOT)/$(PREFIX)/bin"
+	ln -s $(abspath $(A_INIT)) "$(ROOT)/$(PREFIX)/bin"
 
 # Parse the version file and expose version numbers as variables
 # that are available in targets that have this target as prerequisite
@@ -142,7 +153,15 @@ define-version:
 	$(eval VERSION_MAJOR := $(shell cut -f 1 -d . ../src/version))
 	$(eval VERSION_SUFFIX := -$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH))
 
-install: $(GENPARSE) $(A_INIT) $(ARGBASH_TO) $(COMPLETION)
+argbash.rst: ../src/argbash.m4 $(ARGBASH_EXEC)
+	$(ARGBASH_EXEC) --type manpage --strip all -o $@ $<
+
+man: $(MANPAGE)
+
+$(MANPAGE): argbash.rst argbash-defs.rst
+	rst2man $< | gzip > $@
+
+install: $(GENPARSE) $(A_INIT) $(ARGBASH_TO) $(COMPLETION) $(MANPAGE)
 	@echo Installing to prefix "'/$(PREFIX)' of root $(ROOT)"
 	mkdir -p "$(ROOT)/$(PREFIX)/bin"
 	touch "$(ROOT)/$(PREFIX)/bin/argbash$(VERSION_SUFFIX)"
@@ -154,6 +173,8 @@ install: $(GENPARSE) $(A_INIT) $(ARGBASH_TO) $(COMPLETION)
 	cp -p $(A_INIT) "$(ROOT)/$(PREFIX)/bin/argbash-init$(VERSION_SUFFIX)" && chmod a+x "$(ROOT)/$(PREFIX)"/bin/argbash-init$(VERSION_SUFFIX)
 	chmod a+x "$(ROOT)/$(PREFIX)/bin/argbash$(VERSION_SUFFIX)"
 	test "$(INSTALL_COMPLETION)" = "no" || (mkdir -p "$(ROOT)/$(BASH_COMPLETION_DIRECTORY)" && mv "$(COMPLETION)" "$(ROOT)/$(BASH_COMPLETION_DIRECTORY)/")
+	mkdir -p "$(ROOT)/$(PREFIX)/share/man/man1/"
+	cp -p $(MANPAGE) "$(ROOT)/$(PREFIX)/share/man/man1/"
 
 altpreclean: define-version
 	$(RM) "$(ROOT)/$(PREFIX)/bin/argbash-$(VERSION_MAJOR).$(VERSION_MINOR)"
@@ -172,6 +193,7 @@ uninstall:
 	$(RM) "$(ROOT)/$(PREFIX)"/bin/argbash-*
 	rmdir "$(ROOT)/$(PREFIXED_LIBDIR)/argbash$(VERSION_SUFFIX)"
 	$(RM) "$(ROOT)/$(BASH_COMPLETION_DIRECTORY)/$(COMPLETION)"
+	$(RM) "$(ROOT)/$(PREFIX)/share/man/man1/$(MANPAGE)"
 
 altuninstall: define-version uninstall
 
@@ -195,4 +217,4 @@ tag:
 
 # Update using
 # grep '^[-a-z]*:' Makefile | cut -f 1 -d ':' | sort | tr '\n' ' '
-.PHONY: altinstall altpreclean bootstrap check check-shellcheck define-version develop examples install release tag uninstall unittests version
+.PHONY: altinstall altpreclean bootstrap check check-shellcheck define-version develop examples install man release tag uninstall unittests version

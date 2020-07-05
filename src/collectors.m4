@@ -1,13 +1,16 @@
+m4_define([_COLLECTOR_FEEDBACK], [m4_fatal($@)])
 
 
 dnl
 dnl $1: The argument name
 dnl $2: The help message
 dnl $3: The variable name
+dnl $4: The argument cathegory
 m4_define([_FILL_IN_VALUES_FOR_ANY_ARGUMENT], _CHECK_PASSED_ARGS_COUNT(3)[m4_do(
 	[m4_list_append([_ARGS_LONG], [$1])],
 	[m4_list_append([_ARGS_HELP], [$2])],
 	[m4_list_append([_ARGS_VARNAME], [$3])],
+	[m4_list_append([_ARGS_CATH], [$4])],
 )])
 
 
@@ -15,13 +18,21 @@ dnl
 dnl $1: The argument name
 dnl $2: The help message
 dnl $3: The variable name
+dnl $4: The argument cathegory
+dnl $5: The short option
+dnl $6: The default value
 m4_define([_FILL_IN_VALUES_FOR_AN_OPTIONAL_ARGUMENT], _CHECK_PASSED_ARGS_COUNT(3)[m4_do(
-	[_FILL_IN_VALUES_FOR_ANY_ARGUMENT([$1], [$2], [$3])],
+	[_FILL_IN_VALUES_FOR_ANY_ARGUMENT([$1], [$2], [$3], [$4])],
 	[m4_list_append([_ARGS_POS_OR_OPT], [optional])],
 
 	[m4_list_append([_POSITIONALS_MINS], 0)],
 	[m4_list_append([_POSITIONALS_MAXES], 0)],
 	[m4_list_append([_POSITIONALS_DEFAULTS], [])],
+
+	[m4_list_append([_ARGS_SHORT], [$5])],
+	[m4_set_add([_ARGS_SHORT], [$5])],
+
+	[m4_list_append([_ARGS_DEFAULT], [$6])],
 )])
 
 
@@ -29,12 +40,13 @@ dnl
 dnl $1: The argument name
 dnl $2: The help message
 dnl $3: The variable name
+dnl $4: The argument cathegory
 m4_define([_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT], _CHECK_PASSED_ARGS_COUNT(3)[m4_do(
-	[_FILL_IN_VALUES_FOR_ANY_ARGUMENT([$1], [$2], [$3])],
+	[_FILL_IN_VALUES_FOR_ANY_ARGUMENT([$1], [$2], [$3], [$4])],
 	[m4_list_append([_ARGS_POS_OR_OPT], [positional])],
 
-	[m4_list_append([_ARGS_SHORT], [])],
 	[m4_list_append([_ARGS_DEFAULT], [])],
+	[m4_list_append([_ARGS_SHORT], [])],
 )])
 
 
@@ -60,9 +72,13 @@ dnl
 dnl Checks that the an argument is a correct short option arg
 dnl $1: The short option "string"
 dnl $2: The argument name
-m4_define([_CHECK_SHORT_OPTION_NAME_IS_VALID], [m4_do(
-	[m4_ifnblank([$1], [m4_bmatch([$1], [^[0-9a-zA-z]$], ,
-		[m4_fatal([The value of short option '$1' for argument '--$2' is not valid - it has to be either left blank, or exactly one character.]m4_ifnblank([$1], [[ (Yours has ]m4_len([$1])[ characters).]]))])])],
+m4_define([_CHECK_SHORT_OPTION_NAME_IS_OK], [m4_ifnblank([$1], [m4_do(
+		[m4_bmatch([$1], [^[0-9a-zA-z]$], ,
+			[_COLLECTOR_FEEDBACK([The value of short option '$1' for argument '--$2' is not valid - it has to be either left blank, or exactly one character.]m4_ifnblank([$1], [[ (Yours has ]m4_len([$1])[ characters).]]))])],
+		[m4_set_contains([_ARGS_SHORT], [$1],
+			[_COLLECTOR_FEEDBACK([The short option '$1' (in definition of '--$2') is already used.])],
+		)],
+	)],
 )])
 
 
@@ -75,15 +91,15 @@ m4_define([_CHECK_ARGUMENT_NAME_IS_VALID], [m4_do(
 	[dnl Should produce the [= etc.] regexp
 ],
 	[m4_bmatch([$1], [^-],
-		[m4_fatal([The option name '$1' is illegal, because it begins with a dash ('-'). Names can contain dashes, but not at the beginning.])])],
+		[_COLLECTOR_FEEDBACK([The option name '$1' is illegal, because it begins with a dash ('-'). Names can contain dashes, but not at the beginning.])])],
 	[m4_bmatch([$1], m4_dquote(^_allowed),
-		[m4_fatal([The option name '$1' is illegal, because it contains forbidden characters (i.e. other than: ']m4_dquote(_allowed)[').])])],
+		[_COLLECTOR_FEEDBACK([The option name '$1' is illegal, because it contains forbidden characters (i.e. other than: ']m4_dquote(_allowed)[').])])],
 	[m4_popdef([_allowed])],
 )])
 
 
 m4_define([_CHECK_ARGNAME_FREE_FATAL],
-	[_CHECK_ARGNAME_FREE([$1], [$2], [m4_fatal])])
+	[_CHECK_ARGNAME_FREE([$1], [$2], [_COLLECTOR_FEEDBACK])])
 
 
 dnl
@@ -122,13 +138,11 @@ m4_define([THIS_ARGUMENT_IS_OPTIONAL], [m4_do(
 )])
 
 
-
-
-
 dnl TODO: Enable error reaction as a callback.
+dnl See __ADD_OPTIONAL_ARGUMENT for description of arguments
 m4_define([_ADD_OPTIONAL_ARGUMENT_IF_POSSIBLE], [m4_do(
 	[_CHECK_ARGUMENT_NAME_IS_VALID([$1])],
-	[_CHECK_SHORT_OPTION_NAME_IS_VALID([$2], [$1])],
+	[_CHECK_SHORT_OPTION_NAME_IS_OK([$2], [$1])],
 	[m4_list_contains([BLACKLIST], [$1], , [__ADD_OPTIONAL_ARGUMENT($@)])],
 )])
 
@@ -146,13 +160,7 @@ m4_define([__ADD_OPTIONAL_ARGUMENT], [m4_do(
 	[m4_pushdef([_arg_varname], [m4_default([$6], [_varname([$1]]))])],
 	[_OPT_WRAPPED(_arg_varname)],
 	[THIS_ARGUMENT_IS_OPTIONAL],
-	[_FILL_IN_VALUES_FOR_AN_OPTIONAL_ARGUMENT([$1], [$3], _arg_varname)],
-	[m4_list_append([_ARGS_SHORT], [$2])],
-	[m4_set_contains([_ARGS_SHORT], [$2],
-		[m4_ifnblank([$2], [m4_fatal([The short option '$2' (in definition of '--$1') is already used.])])],
-		[m4_set_add([_ARGS_SHORT], [$2])])],
-	[m4_list_append([_ARGS_DEFAULT], [$4])],
-	[m4_list_append([_ARGS_CATH], [$5])],
+	[_FILL_IN_VALUES_FOR_AN_OPTIONAL_ARGUMENT([$1], [$3], _arg_varname, [$5], [$2], [$4])],
 	[m4_popdef([_arg_varname])],
 	[m4_define([_DISTINCT_OPTIONAL_ARGS_COUNT], m4_incr(_DISTINCT_OPTIONAL_ARGS_COUNT))],
 )])
@@ -198,7 +206,46 @@ argbash_api([ARG_VERSION], _CHECK_PASSED_ARGS_COUNT(1)[m4_do(
 	[dnl Just record how have we called ourselves
 ],
 	[[$0($@)]],
-	[m4_bmatch(m4_expand([_W_FLAGS]), [V], ,[_ARG_VERSION([$1])])],
+	[m4_bmatch(m4_expand([_W_FLAGS]), [V], ,
+		[_ARG_VERSION([$1])])],
+)])
+
+
+dnl
+dnl $1: The possibly blank additional message
+m4_define([_VERSION_PRINTF_FORMAT], [m4_do(
+	[['%s %s\n]],
+	[m4_ifnblank([_HELP_MSG], [[\n%s\n]])],
+	[m4_ifnblank([$1], [[%s\n]])],
+	['],
+)])
+
+
+dnl
+dnl $1: The complete version string
+dnl $2: The possibly blank additional message
+m4_define([_VERSION_PRINTF_ARGS], [m4_do(
+	[[$1]],
+	[m4_ifnblank([_HELP_MSG], [ 'm4_quote(_HELP_MSG)'])],
+	[m4_ifnblank([$2], [[ $2]])],
+)])
+
+
+dnl
+dnl $1: The possibly blank additional message
+m4_define([_VERSION_PRINTF_COMMAND],
+	[[printf] _VERSION_PRINTF_FORMAT([$1]) _VERSION_PRINTF_ARGS(m4_quote("INFERRED_BASENAME" "PROVIDED_VERSION_STRING"), [$1])])
+
+
+dnl
+dnl Try to guess the program name
+dnl $1 The version string.
+dnl $2 The version message (incl. quotes) to printf past the simple <program> <version> display. (optional), UNDOCUMENTED NON-FEATURE
+argbash_api([ARG_VERSION_AUTO], _CHECK_PASSED_ARGS_COUNT(1)[m4_do(
+	[[$0($@)]],
+	[m4_define([PROVIDED_VERSION_STRING], [m4_expand([$1])])],
+	[m4_bmatch(m4_expand([_W_FLAGS]), [V], ,
+		[_ARG_VERSION(_VERSION_PRINTF_COMMAND([$2]))])],
 )])
 
 
@@ -278,7 +325,7 @@ dnl $4: default (=off)
 argbash_api([ARG_OPTIONAL_BOOLEAN], _CHECK_PASSED_ARGS_COUNT(1, 4)[m4_do(
 	[[$0($@)]],
 	[m4_ifnblank([$4], [m4_case([$4], [on], , [off], ,
-		[m4_fatal([Problem with argument '$1': Only 'on' or 'off' are allowed as boolean defaults, you have specified '$4'.])])])],
+		[_COLLECTOR_FEEDBACK([Problem with argument '$1': Only 'on' or 'off' are allowed as boolean defaults, you have specified '$4'.])])])],
 	[_ADD_OPTIONAL_ARGUMENT_IF_POSSIBLE([$1], [$2], [$3],
 		m4_default_quoted([$4], [off]), [bool])],
 )])
@@ -297,8 +344,8 @@ argbash_api([ARG_OPTIONAL_ACTION], [m4_do(
 dnl
 dnl $1: The name of the current argument
 m4_define([_CHECK_THAT_NUMBER_OF_PRECEDING_ARGUMENTS_IS_KNOWN], [m4_do(
-	[IF_POSITIONALS_INF([m4_fatal([We already expect arbitrary number of arguments before '$1'. This is not supported])], [])],
-	[IF_VARIABLE_NUMBER_OF_ARGUMENTS_BEFOREHAND([m4_fatal([The number of expected positional arguments before '$1' is unknown (because of argument ']_LAST_POSITIONAL_ARGUMENT_WITH_DEFAULT[', which has a default). This is not supported, define arguments that accept fixed number of values first.])], [])],
+	[IF_POSITIONALS_INF([_COLLECTOR_FEEDBACK([We already expect arbitrary number of arguments before '$1'. This is not supported])], [])],
+	[IF_VARIABLE_NUMBER_OF_ARGUMENTS_BEFOREHAND([_COLLECTOR_FEEDBACK([The number of expected positional arguments before '$1' is unknown (because of argument ']_LAST_POSITIONAL_ARGUMENT_WITH_DEFAULT[', which has a default). This is not supported, define arguments that accept fixed number of values first.])], [])],
 )])
 
 
@@ -355,9 +402,8 @@ m4_define([_ARG_POSITIONAL_SINGLE], [m4_do(
 			[m4_list_append([_POSITIONALS_MINS], 0)],
 			[m4_list_append([_POSITIONALS_DEFAULTS], [$3])],
 		)])],
-	[_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT([$1], [$2], _varname([$1]))],
+	[_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT([$1], [$2], _varname([$1]), [single])],
 	[m4_list_append([_POSITIONALS_MAXES], 1)],
-	[m4_list_append([_ARGS_CATH], [single])],
 )])
 
 
@@ -390,8 +436,7 @@ m4_define([_ARG_POSITIONAL_INF], _CHECK_INTEGER_TYPE(3, [minimal number of argum
 	[dnl We won't have to use stuff s.a. m4_quote(_INF_REPR), but _INF_REPR directly
 ],
 	[m4_define([_INF_REPR], [[$4]])],
-	[_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT([$1], [$2], _varname([$1]))],
-	[m4_list_append([_ARGS_CATH], [inf])],
+	[_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT([$1], [$2], _varname([$1]), [inf])],
 	[_DECLARE_THAT_RANGE_OF_POSITIONAL_ARGUMENTS_IS_ACCEPTED([$1])],
 	[m4_pushdef([_min_argn], [[$3]])],
 	[m4_define([_INF_ARGN], _min_argn)],
@@ -427,8 +472,7 @@ m4_define([_ARG_POSITIONAL_MULTI], [m4_do(
 	[_CHECK_POSITIONAL_ARGNAME_IS_FREE([$1])],
 	[_POS_WRAPPED(${_varname([$1])[@]})],
 	[m4_define([_HIGHEST_POSITIONAL_VALUES_COUNT], m4_eval(_HIGHEST_POSITIONAL_VALUES_COUNT + [$3]))],
-	[_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT([$1], [$2], _varname([$1]))],
-	[m4_list_append([_ARGS_CATH], [more])],
+	[_FILL_IN_VALUES_FOR_A_POSITIONAL_ARGUMENT([$1], [$2], _varname([$1]), [more])],
 	[dnl Minimal number of args is number of accepted - number of defaults (= $3 - ($# - 3))
 ],
 	[m4_pushdef([_min_argn], m4_eval([$3] - ($# - 3) ))],
@@ -508,7 +552,7 @@ dnl When the strict mode is on, some argument values are blacklisted
 argbash_api([ARG_RESTRICT_VALUES], _CHECK_PASSED_ARGS_COUNT(1)[m4_do(
 	[[$0($@)]],
 	[m4_set_contains([_SET_OF_RESTRICT_VALUES_MODES], [$1], ,
-		[m4_fatal([Invalid strict mode - used '$1', but you have to use one of: ]m4_set_contents([_SET_OF_RESTRICT_VALUES_MODES], [, ]).)])],
+		[_COLLECTOR_FEEDBACK([Invalid strict mode - used '$1', but you have to use one of: ]m4_set_contents([_SET_OF_RESTRICT_VALUES_MODES], [, ]).)])],
 	[m4_define([_RESTRICT_VALUES], [[$1]])],
 )])
 
@@ -526,10 +570,11 @@ argbash_api([ARG_LEFTOVERS],
 
 
 dnl
-dnl $1: Stem of file are we wrapping. We expect macro _SCRIPT_$1 to be defined and to contain the full filefilename
+dnl $1: Stem of file we are wrapping. We expect macro _SCRIPT_$1 to be defined and to contain the full filefilename
 dnl $2: What to do if the argument of the ARGBASH_WRAP macro has surprised us - it has not been processed by argbash script.
 m4_define([_IF_WRAPPING_FILE_UNEXPECTEDLY],
 	[m4_ifndef([_SCRIPT_$1], [$2])])
+
 
 dnl
 dnl Wrap an Argbash-aware script.
@@ -541,14 +586,18 @@ dnl $3: Codes of blacklisted args (string, default is HVI for help + version)
 argbash_api([ARGBASH_WRAP], _CHECK_PASSED_ARGS_COUNT(1, 3)[m4_do(
 	[[$0($@)]],
 	[m4_pushdef([WRAPPED_FILE_STEM], m4_indir([_GROUP_OF_$1]))],
+	[m4_pushdef([WRAPPED_SCRIPT_FILENAME], m4_dquote(m4_indir([_SCRIPT_$1])))],
+	[m4_list_append([LIST_OF_FILES_WRAPPED], WRAPPED_SCRIPT_FILENAME)],
 	[m4_list_append([BLACKLIST], $2)],
 	[m4_pushdef([_W_FLAGS], [m4_default_quoted([$3], _DEFAULT_WRAP_FLAGS)])],
 	[_IF_WRAPPING_FILE_UNEXPECTEDLY([$1],
-		[m4_fatal([The calling script was supposed to find location of the file with stem '$1' and define it as a macro, but the latter didn't happen.])])],
-	[m4_ignore(m4_include(m4_indir([_SCRIPT_$1])))],
+		[_COLLECTOR_FEEDBACK([The calling script was supposed to find location of the file with stem '$1' and define it as a macro, but the latter didn't happen.])])],
+	[m4_ignore(m4_include(WRAPPED_SCRIPT_FILENAME))],
 	[m4_popdef([_W_FLAGS])],
 	[m4_list_destroy([BLACKLIST])],
+	[m4_popdef([WRAPPED_SCRIPT_FILENAME])],
 	[m4_popdef([WRAPPED_FILE_STEM])],
 )])
 
 
+m4_define([MAKE_ARGBASH_WRAP_IMPOSSIBLE], [argbash_api([ARGBASH_WRAP], [_COLLECTOR_FEEDBACK([Argbash wrapping is not supported: $1])])])

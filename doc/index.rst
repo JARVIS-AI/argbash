@@ -22,7 +22,7 @@ A basic template generator ``argbash-init`` is part of the package, and you can 
 :Authors:
   `Matěj Týč <https://github.com/matejak>`_
 :Copyright:
-  2014--2017, Matěj Týč
+  2014--|current-year|, Matěj Týč
 :Website:
   https://argbash.io
 
@@ -133,14 +133,14 @@ We generate the script from the template:
 
 ::
 
-   bin/argbash script.m4 -o script.sh
+   bin/argbash minimal.m4 -o minimal.sh
 
 
 Now we launch it and the output is good!
 
 ::
 
-   ./script.sh posi-tional -o opt-ional --print
+   ./minimal.sh posi-tional -o opt-ional --print
 
    Positional arg value: posi-tional
    Optional arg --option value: opt-ional
@@ -148,6 +148,7 @@ Now we launch it and the output is good!
 .. note::
 
    If something still isn't totally clear, take look at the :ref:`sec_example` section.
+
 
 .. _limitations:
 
@@ -167,6 +168,16 @@ Limitations
 
 #. The generated code generally contains bashisms as it relies heavily on ``bash`` arrays to process any kind of positional arguments and multi-valued optional arguments.
    That said, if you stick with optional arguments only, a POSIX shell s.a. ``dash`` should be able to process the ``Argbash``-generated parsing code.
+
+
+FAQ
+---
+
+* **Q**: What is the license of generated code?
+  Is it also the 3-clause BSD, as it contains parts of Argbash source code?
+
+  **A**: No, as it is mentioned in the `LICENSE` file, you can distribute Argbash output under your terms.
+  We recommend you to adhere to the BSD license --- keeping comments indicating that the code is generated is fair towards script's users.
 
 Index
 -----

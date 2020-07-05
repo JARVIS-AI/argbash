@@ -1,4 +1,4 @@
-ADD_TEST([test-int], [[
+ADD_TEST_BASH([test-int], [[
 	$< 1 | grep -q "POS_S=1,"
 	ERROR="integer" $(REVERSE) $< a
 	ERROR="integer" $(REVERSE) $< 1.5
@@ -17,7 +17,7 @@ ADD_TEST([test-int], [[
 	ERROR="negative" $(REVERSE) $< 1 --nnint -1
 ]])
 
-ADD_TEST([test-group], [[
+ADD_TEST_BASH([test-group], [[
 	$< foo | grep -q "ACT=foo"
 	$< '' | grep -q "ACT="
 	$< foo,baz | grep -q "ACT=foo,baz,"
@@ -25,11 +25,12 @@ ADD_TEST([test-group], [[
 	ERROR="allowed" $(REVERSE) $< fuuuu
 	ERROR="allowed" $(REVERSE) $< bar
 	@# Assure that there is not the string '_idx' in the script since we don't want indices support in this test
-	! grep -q _idx $< 
-	# $< -h | grep action | grep ACTION | grep -q 'foo,baz'
+	! grep -q _idx $<
+	$< -h | grep act-ion | grep -q "'foo,baz'"
+	$< -h | grep act-ion | grep -q "'bar bar'"
 ]])
 
-ADD_TEST([test-group-idx], [[
+ADD_TEST_BASH([test-group-idx], [[
 	$< foo | grep -q "ACT=foo,IDX=0,"
 	$< foo,baz | grep -q "ACT=foo,baz,IDX=3,"
 	$< "bar bar" | grep -q "ACT=bar bar,IDX=2,"
@@ -45,4 +46,4 @@ ADD_RULE([$(TESTDIR)/gen-test-group-wrong.m4], [$(TESTDIR)/test-group.m4],
 	[[sed -e 's/repeated@:>@,/foo,&/' $< > $@
 ]])
 ADD_SCRIPT([gen-test-group-wrong], [m4])
-ADD_GENTEST([group-wrong], ['foo' is not a script argument])
+ADD_GENTEST_BASH([group-wrong], ['foo' is not a script argument])

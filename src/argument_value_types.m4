@@ -41,27 +41,46 @@ argbash_api([ARG_TYPE_GROUP], [m4_do(
 
 dnl
 dnl $1: The value type string (code)
+dnl $2: The set of possible values (as a list)
+m4_define([_SAVE_SET_TYPE], [m4_do(
+	[m4_foreach([_val], [$2], [m4_do(
+		[m4_list_append([_LIST_$1_QUOTED], m4_quote(_sh_quote_also_blanks(m4_expand([_val]))))],
+		[m4_list_append([_LIST_$1], m4_expand([_val]))],
+	)])],
+)])
+
+
+dnl
+dnl $1: The value type string (code)
 dnl $2: The type group name
 dnl $3: Concerned arguments (as a list)
 dnl $4: The set of possible values (as a list)
 dnl $5: The index variable suffix
 dnl TODO: Integrate with help (and not only with the help synopsis)
+dnl TODO: We expand the _MK_VALIDATE_GROUP_FUNCTION one time too much
 argbash_api([ARG_TYPE_GROUP_SET], [m4_do(
 	[[$0($@)]],
-	[m4_foreach([_val], [$4], [m4_do(
-		[m4_list_append([_LIST_$1_QUOTED], m4_quote(_sh_quote_also_blanks(m4_quote(_val))))],
-		[m4_list_append([_LIST_$1], m4_quote(_val))],
-	)])],
+	[_SAVE_SET_TYPE([$1], [$4])],
 	[_define_validator([$1], m4_expand([_MK_VALIDATE_GROUP_FUNCTION([$1], [$5])]),
 		m4_expand([[one of ]m4_list_join([_LIST_$1], [, ], ', ', [ and ])]))],
 	[m4_foreach([_argname], [$3], [m4_do(
 		[m4_list_contains([_ARGS_LONG], _argname, ,
 				[m4_fatal('_argname' [is not a script argument.])])],
-		[m4_set_add([GROUP_ARGS], m4_quote(_argname))],
-		[m4_define([_]m4_quote(_argname)[_SUFFIX], [[$5]])],
+		[m4_set_add([GROUP_SET_ARGS], _argname)],
+		[m4_define([_]_argname[_SUFFIX], [[$5]])],
 	)])],
 	[_TYPED_GROUP_STUFF([$1], _INFER_TYPE_GROUP_NAME_FROM_VALUE_IF_NEEDED([$1], [$2]), [$3])],
 )])
+
+
+dnl
+dnl $1: Argname
+dnl $2: If it is of the set type
+dnl $3: If it is NOT of the set type
+m4_define([_IF_ARG_IS_OF_SET_TYPE], [m4_set_contains([GROUP_SET_ARGS], [$1], [$2], [$3])])
+
+
+m4_define([LIST_OF_VALUES_OF_ARGNAME], [[_LIST_]m4_quote(m4_indir([$1_VAL_TYPE]))])
 
 
 dnl
@@ -105,7 +124,7 @@ m4_define([_VALIDATE_POSITIONAL_ARGUMENTS], [m4_do(
 	[m4_lists_foreach_positional([_ARGS_LONG], [_arg], [m4_set_contains([TYPED_ARGS], _arg, [m4_do(
 
 		[m4_pushdef([_arg_varname], [_varname(_arg)])],
-		
+
 		[_arg_varname=_MAYBE_VALIDATE_VALUE(_arg, "$_arg_varname") || exit 1
 ],
 		[m4_popdef([_arg_varname])],
@@ -117,7 +136,7 @@ m4_define([_IF_ARG_IS_TYPED], [m4_set_contains([TYPED_ARGS], [$1], [$2], [$3])])
 
 
 m4_define([_MAYBE_ASSIGN_INDICES_TO_TYPED_SINGLE_VALUED_ARGS], [m4_do(
-	[m4_set_foreach([GROUP_ARGS], [_arg], [m4_do(
+	[m4_set_foreach([GROUP_SET_ARGS], [_arg], [m4_do(
 		[_CATH_IS_SINGLE_VALUED(m4_list_nth([_ARGS_CATH], m4_list_indices([_ARGS_LONG], _arg), 123),
 			[_VALIDATE_VALUES_IDX(_arg, m4_indir([_]_arg[_SUFFIX]))
 ],

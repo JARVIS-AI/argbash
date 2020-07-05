@@ -1,7 +1,3 @@
-TESTS =
-SCRIPTS =
-TESTS_GEN =
-
 TESTDIR ?= ../regressiontests
 PHONIES ?=
 
@@ -15,8 +11,59 @@ REVERSE = $(TESTDIR)/reverse
 ARGBASH_EXEC ?= $(ARGBASH_BIN)
 ARGBASH_INIT_EXEC ?= $(ARGBASH_INIT)
 
+%-dash.sh: %.m4 $(ARGBASH_BIN)
+	$(word 2,$^) --type posix-script -o $@ $<
+	sed -i "s|#!/bin/bash|#!$(shell which dash)|" $@
+
 %.sh: %.m4 $(ARGBASH_BIN)
 	$(word 2,$^) $< -o $@
+
+%.txt: %.m4 $(ARGBASH_BIN)
+	$(word 2,$^) $< -t docopt --strip all -o $@
+TESTS =
+TESTS_GEN =
+
+# presumably always-executed and created scripts
+SCRIPTS = \
+	$(TESTDIR)/basic2.sh \
+	$(TESTDIR)/test-salone.sh \
+	$(TESTDIR)/test-standalone2.sh \
+	$(TESTDIR)/test-ddash.m4 \
+	$(TESTDIR)/test-diy-noop.m4 \
+	$(TESTDIR)/test-diy-noop.sh \
+	$(TESTDIR)/test-diy.m4 \
+	$(TESTDIR)/test-wrapping-second_level.sh \
+	$(TESTDIR)/test-wrapping-single_level.sh \
+	$(TESTDIR)/otherdir/test-onlyopt.m4 \
+	$(TESTDIR)/test-wrapping-otherdir.sh \
+	$(TESTDIR)/otherdir/test-onlypos.m4 \
+	$(TESTDIR)/test-wrapping2.sh \
+	$(TESTDIR)/test-init_simple.sh \
+	$(TESTDIR)/test-init_simple.m4 \
+	$(TESTDIR)/test-init_simple-parsing.m4 \
+	$(TESTDIR)/test-init_simple-s.sh \
+	$(TESTDIR)/test-init_simple-s-parsing.sh \
+	$(TESTDIR)/test-init_simple-s-parsing.m4 \
+	$(TESTDIR)/test-init_simple-s.m4 \
+	$(TESTDIR)/regenerate-test-init-simple-s-update.m4 \
+	$(TESTDIR)/test-init_simple-s-update-parsing.sh \
+	$(TESTDIR)/test-init_simple-s-update-parsing.m4 \
+	$(TESTDIR)/regenerate-test-init_simple-s-update.m4 \
+	$(TESTDIR)/test-init_simple-s-update.m4 \
+	$(TESTDIR)/test-init_simple-ss-parsing.sh \
+	$(TESTDIR)/test-init_simple-ss-parsing.m4 \
+	$(TESTDIR)/test-init_simple-ss.sh \
+	$(TESTDIR)/gen-test-init_name_char.m4 \
+	$(TESTDIR)/gen-test-init_name_dash.m4 \
+	$(TESTDIR)/gen-test-group-wrong.m4 \
+	$(TESTDIR)/test-semi_strict.sh \
+	$(TESTDIR)/test-very_strict.sh \
+	$(TESTDIR)/test-getopt-equals.sh \
+	$(TESTDIR)/test-getopt-both.sh \
+	$(TESTDIR)/test-getopt-space.sh \
+	$(NUL)
+
+# bash tests
 TESTS += \
 	stability \
 	basic \
@@ -61,74 +108,11 @@ TESTS += \
 	test-getopt-space \
 	test-getopt-equals \
 	$(NUL)
-TESTS += tests-gen
 
-SCRIPTS += \
-	$(TESTDIR)/basic2.sh \
-	$(TESTDIR)/basic.sh \
-	$(TESTDIR)/test-void.sh \
-	$(TESTDIR)/test-salone.sh \
-	$(TESTDIR)/call-salone.sh \
-	$(TESTDIR)/test-most.sh \
-	$(TESTDIR)/test-more.sh \
-	$(TESTDIR)/test-onlypos.sh \
-	$(TESTDIR)/test-onlypos-declared.sh \
-	$(TESTDIR)/test-onlyopt.sh \
-	$(TESTDIR)/test-standalone2.sh \
-	$(TESTDIR)/test-standalone.sh \
-	$(TESTDIR)/test-ddash.m4 \
-	$(TESTDIR)/test-ddash.sh \
-	$(TESTDIR)/test-simple.sh \
-	$(TESTDIR)/test-diy-noop.sh \
-	$(TESTDIR)/test-diy-noop.m4 \
-	$(TESTDIR)/test-diy.sh \
-	$(TESTDIR)/test-diy.m4 \
-	$(TESTDIR)/test-wrapping-second_level.sh \
-	$(TESTDIR)/test-wrapping-single_level.sh \
-	$(TESTDIR)/otherdir/test-onlyopt.m4 \
-	$(TESTDIR)/test-wrapping.sh \
-	$(TESTDIR)/test-wrapping-otherdir.sh \
-	$(TESTDIR)/otherdir/test-onlypos.m4 \
-	$(TESTDIR)/test-wrapping-more.sh \
-	$(TESTDIR)/test-wrapping-excl.sh \
-	$(TESTDIR)/test-wrapping2.sh \
-	$(TESTDIR)/test-infinity-minimal_call.sh \
-	$(TESTDIR)/test-infinity.sh \
-	$(TESTDIR)/test-infinity-nodefaults.sh \
-	$(TESTDIR)/test-infinity-mixed.sh \
-	$(TESTDIR)/test-leftovers.sh \
-	$(TESTDIR)/test-delim-space.sh \
-	$(TESTDIR)/test-delim-equals.sh \
-	$(TESTDIR)/test-delim-both.sh \
-	$(TESTDIR)/test-init_simple.sh \
-	$(TESTDIR)/test-init_simple-s.sh \
-	$(TESTDIR)/test-init_simple-ss.sh \
-	$(TESTDIR)/test-init_simple.m4 \
-	$(TESTDIR)/test-init_simple-parsing.m4 \
-	$(TESTDIR)/test-init_simple-s-parsing.sh \
-	$(TESTDIR)/test-init_simple-s-parsing.m4 \
-	$(TESTDIR)/test-init_simple-s.m4 \
-	$(TESTDIR)/regenerate-test-init-simple-s-update.m4 \
-	$(TESTDIR)/test-init_simple-s-update-parsing.sh \
-	$(TESTDIR)/test-init_simple-s-update-parsing.m4 \
-	$(TESTDIR)/regenerate-test-init_simple-s-update.m4 \
-	$(TESTDIR)/test-init_simple-s-update.m4 \
-	$(TESTDIR)/test-init_simple-s-update.sh \
-	$(TESTDIR)/test-init_simple-ss-parsing.sh \
-	$(TESTDIR)/test-init_simple-ss-parsing.m4 \
-	$(TESTDIR)/gen-test-init_name_char.m4 \
-	$(TESTDIR)/gen-test-init_name_dash.m4 \
-	$(TESTDIR)/test-env-base.sh \
-	$(TESTDIR)/test-env-simple.sh \
-	$(TESTDIR)/test-int.sh \
-	$(TESTDIR)/test-group.sh \
-	$(TESTDIR)/test-group-idx.sh \
-	$(TESTDIR)/gen-test-group-wrong.m4 \
-	$(TESTDIR)/test-semi_strict.sh \
-	$(TESTDIR)/test-very_strict.sh \
-	$(TESTDIR)/test-getopt-equals.sh \
-	$(TESTDIR)/test-getopt-both.sh \
-	$(TESTDIR)/test-getopt-space.sh \
+# docopt tests
+TESTS += \
+	basic-docopt \
+	test-onlyopt-docopt \
 	$(NUL)
 
 TESTS_GEN += \
@@ -151,24 +135,98 @@ TESTS_GEN += \
 	gen-test-group-wrong \
 	$(NUL)
 
-define generic_regression
+SCRIPTS += \
+	$(TESTDIR)/basic.sh \
+	$(TESTDIR)/test-void.sh \
+	$(TESTDIR)/call-salone.sh \
+	$(TESTDIR)/test-most.sh \
+	$(TESTDIR)/test-more.sh \
+	$(TESTDIR)/test-onlypos.sh \
+	$(TESTDIR)/test-onlypos-declared.sh \
+	$(TESTDIR)/test-onlyopt.sh \
+	$(TESTDIR)/test-standalone.sh \
+	$(TESTDIR)/test-ddash.sh \
+	$(TESTDIR)/test-simple.sh \
+	$(TESTDIR)/test-diy-noop.sh \
+	$(TESTDIR)/test-diy.sh \
+	$(TESTDIR)/test-wrapping-second_level.sh \
+	$(TESTDIR)/test-wrapping.sh \
+	$(TESTDIR)/test-wrapping-otherdir.sh \
+	$(TESTDIR)/test-wrapping-more.sh \
+	$(TESTDIR)/test-wrapping-excl.sh \
+	$(TESTDIR)/test-infinity-minimal_call.sh \
+	$(TESTDIR)/test-infinity.sh \
+	$(TESTDIR)/test-infinity-nodefaults.sh \
+	$(TESTDIR)/test-infinity-mixed.sh \
+	$(TESTDIR)/test-leftovers.sh \
+	$(TESTDIR)/test-delim-space.sh \
+	$(TESTDIR)/test-delim-equals.sh \
+	$(TESTDIR)/test-delim-both.sh \
+	$(TESTDIR)/test-init_simple.sh \
+	$(TESTDIR)/test-init_simple-s.sh \
+	$(TESTDIR)/test-init_simple-ss.sh \
+	$(TESTDIR)/test-init_simple-s-update.sh \
+	$(TESTDIR)/test-env-base.sh \
+	$(TESTDIR)/test-env-simple.sh \
+	$(TESTDIR)/test-int.sh \
+	$(TESTDIR)/test-group.sh \
+	$(TESTDIR)/test-group-idx.sh \
+	$(TESTDIR)/test-semi_strict.sh \
+	$(TESTDIR)/test-very_strict.sh \
+	$(TESTDIR)/test-getopt-both.sh \
+	$(TESTDIR)/test-getopt-space.sh \
+	$(TESTDIR)/test-getopt-equals.sh \
+	$(TESTDIR)/basic.txt \
+	$(TESTDIR)/test-onlyopt.txt \
+	$(NUL)
+
+ifneq "$(shell which dash 2> /dev/null)" ""
+
+TESTS += \
+	basic-dash \
+	test-onlyopt-dash \
+	test-simple-dash \
+	$(NUL)
+
+TESTS_GEN += \
+	gen-test-infinity-dash \
+	gen-test-wrap-dash \
+	$(NUL)
+
+SCRIPTS += \
+	$(TESTDIR)/basic-dash.sh \
+	$(TESTDIR)/test-onlyopt-dash.sh \
+	$(TESTDIR)/test-simple-dash.sh \
+	$(NUL)
+
+endif
+
+TESTS += tests-gen
+
+define generic_regression_posix
 	$< LOO | grep -q 'POS_S=LOO',
 	$< "LOO BAR" | grep -q 'POS_S=LOO BAR,'
+	$< -b LOO | grep -q BOOL=on,
 	$< LOO | grep -q BOOL=off,
-	$< LOO --boo_l | grep -q BOOL=on,
-	$< LOO --no-boo_l | grep -q BOOL=off,
 	$< LOO | grep -q 'OPT_S=opt_arg_default lolo',
-	$< LOO --opt_arg PoS | grep -q OPT_S=PoS,
-	$< LOO --opt_arg "PoS sob" | grep -q 'OPT_S=PoS sob,'
-	$< LOO --opt_arg="PoS sob" | grep -q 'OPT_S=PoS sob,'
 	$< LOO UFTA | grep -q 'POS_OPT=UFTA,'
-	$< LOO --boo_l --boo_l | grep -q 'POS_OPT=pos_opt_default lala,'
 	$< LOO | grep -q 'OPT_INCR=2,'
-	$< LOO --opt-incr | grep -q 'OPT_INCR=3,'
-	$< LOO --opt-incr -i | grep -q 'OPT_INCR=4,'
+	$< -ii LOO | grep -q 'OPT_INCR=4,'
 	$< -h | grep -- pos_arg | grep -q pos_arg_help
 	$< -h | grep -- pos-opt | grep -q @pos-opt-arg@
 	$< -h | grep -q ' \[<pos-opt>\]'
+endef
+
+define generic_regression_gnu_only
+	$< LOO --opt_arg "PoS sob" | grep -q 'OPT_S=PoS sob,'
+	$< --opt_arg PoS LOO | grep -q OPT_S=PoS,
+	$< --opt_arg="PoS sob" LOO | grep -q 'OPT_S=PoS sob,'
+	$< LOO -b | grep -q BOOL=on,
+	$< LOO --boo_l | grep -q BOOL=on,
+	$< LOO --boo_l --boo_l | grep -q 'POS_OPT=pos_opt_default lala,'
+	$< --no-boo_l LOO | grep -q BOOL=off,
+	$< --opt-incr -i LOO | grep -q 'OPT_INCR=4,'
+	$< LOO --opt-incr | grep -q 'OPT_INCR=3,'
 	$(REVERSE) $< LOO --opt_arg 2> /dev/null
 endef
 
@@ -190,15 +248,25 @@ stability: $(TESTDIR)/basic.sh $(TESTDIR)/basic2.sh
 	diff -q $< $(word 2,$^)
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/basic.sh"
 basic: $(TESTDIR)/basic.sh
-	$(generic_regression)
+	$(generic_regression_posix)
+	$(generic_regression_gnu_only)
 	$< -h | grep -q 'P percent: %'
 	$< -h | grep -q 'O percent: %'
+	! $< -h | grep -qe '\[--\]'
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/basic.sh"
+basic-dash: $(TESTDIR)/basic-dash.sh
+	$(generic_regression_posix)
+	$< LOO -b | grep -q BOOL=off,
+	$< -h | grep -q 'P percent: %'
+	$< -h | grep -q 'O percent: %'
+	$< -h | grep -qe '\[--\]'
+	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/basic-dash.sh"
 test-void: $(TESTDIR)/test-void.sh
 	! grep -q 'die' $<
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-void.sh"
 call-salone: $(TESTDIR)/call-salone.sh
-	$(generic_regression)
+	$(generic_regression_posix)
+	$(generic_regression_gnu_only)
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/call-salone.sh"
 test-most: $(TESTDIR)/test-most.sh
 	$< -h | grep -q '<pos-more1-1> <pos-more1-2> \[<pos-more2-1>\] \[<pos-more2-2>\]'
@@ -228,14 +296,18 @@ test-onlyopt: $(TESTDIR)/test-onlyopt.sh
 	@# ! negates the return code
 	! grep -q '^	' $<
 	$(REVERSE) grep -q POSITION $<
+	$< -o "PoS sob" | grep -q 'OPT_S=PoS sob,'
+	$< -B | grep -q 'BOOL=on'
+	$< -i | grep -q 'OPT_INCR=3,'
+	$< -i -i | grep -q 'OPT_INCR=4,'
+	! $< -h | grep -q -e '-B,'
+	$(REVERSE) $< LOO 2> /dev/null
 	$< --opt-arg PoS | grep -q OPT_S=PoS,
 	$< --opt-arg "PoS sob" | grep -q 'OPT_S=PoS sob,'
 	$< --boo_l | grep -q 'BOOL=on'
 	$< --no-boo_l | grep -q 'BOOL=off'
 	$< -r /usr/lib --opt-repeated /usr/local/lib | grep -q 'ARG_REPEATED=/usr/lib /usr/local/lib,'
-	$(REVERSE) $< LOO 2> /dev/null
 	$< -h | grep -q -e '-B|--(no-)boo_l'
-	! $< -h | grep -q -e '-B,'
 	$< -h | grep -q -e '-i|--incrx'
 	$< -h | grep -q -e '-i, --incrx'
 	$< -h | grep -q -e '-o|--opt-arg <arg>'
@@ -243,6 +315,24 @@ test-onlyopt: $(TESTDIR)/test-onlyopt.sh
 	$< -h | grep -q -e '-r|--opt-repeated'
 	$< -h | grep -q -e '-r, --opt-repeated:'
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-onlyopt.sh"
+test-onlyopt-dash: $(TESTDIR)/test-onlyopt-dash.sh
+	grep -q '^    esac$$' $<
+	@# ! negates the return code
+	! grep -q '^	' $<
+	$(REVERSE) grep -q POSITION $<
+	$< -o "PoS sob" | grep -q 'OPT_S=PoS sob,'
+	$< -B | grep -q 'BOOL=on'
+	$< -i | grep -q 'OPT_INCR=3,'
+	$< -i -i | grep -q 'OPT_INCR=4,'
+	! $< -h | grep -q -e '-B,'
+	$(REVERSE) $< LOO 2> /dev/null
+	$< -h | grep -q -e '-B'
+	$< -h | grep -q -e '-i'
+	$< -h | grep -q -e '-o <arg>'
+	$< -h | grep -q -e '-o: @opt-arg@'
+	! $< -h | grep -q -e '-r'
+	ERROR=cosi $(REVERSE) $< -o lala cosi
+	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-onlyopt-dash.sh"
 stability-salone: $(TESTDIR)/test-standalone.sh $(TESTDIR)/test-standalone2.sh
 	diff -q $< $(word 2,$^)
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-standalone.sh"
@@ -261,12 +351,13 @@ test-ddash: $(TESTDIR)/test-ddash.sh
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-ddash.sh"
 test-simple: $(TESTDIR)/test-simple.sh
 	$< pos | grep -q 'OPT_S=x,POS_S=pos,'
-	$< pos -o 'uf ta' | grep -q 'OPT_S=uf ta,POS_S=pos,'
+	$< -o 'uf ta' pos | grep -q 'OPT_S=uf ta,POS_S=pos,'
 	$< -h | grep -q 'END-$$'
 	$< -h | grep -q '^\s*-BEGIN'
 	$< -h | grep -q '^		-BEGIN'
 	$< -h | grep -q -v '^\s*-BEGIN2'
 	$< -h | grep -q -v 'END2-$$'
+	$< -h | grep -q '"line 2" END-\\n'
 	$< -h | grep -q '^		-PBEGIN'
 	$< -h | grep -q 'PEND-$$'
 	grep -q '^		esac' $<
@@ -276,7 +367,30 @@ test-simple: $(TESTDIR)/test-simple.sh
 	ERROR="expect exactly 1" 	$(REVERSE) $< one two
 	ERROR="[Nn]ot enough" 	$(REVERSE) $<
 	ERROR="require exactly 1" 	$(REVERSE) $<
+	$< pos -o 'uf ta' | grep -q 'OPT_S=uf ta,POS_S=pos,'
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-simple.sh"
+test-simple-dash: $(TESTDIR)/test-simple-dash.sh
+	$< pos | grep -q 'OPT_S=x,POS_S=pos,'
+	$< -o 'uf ta' pos | grep -q 'OPT_S=uf ta,POS_S=pos,'
+	$< -h | grep -q 'END-$$'
+	$< -h | grep -q '^\s*-BEGIN'
+	$< -h | grep -q '^		-BEGIN'
+	$< -h | grep -q -v '^\s*-BEGIN2'
+	$< -h | grep -q -v 'END2-$$'
+	$< -h | grep -q '"line 2" END-\\n'
+	$< -h | grep -q '^		-PBEGIN'
+	$< -h | grep -q 'PEND-$$'
+	grep -q '^		esac' $<
+	grep -q '^			\*)' $<
+	ERROR=spurious 	$(REVERSE) $< -- one two
+	ERROR="last one was: 'two'" 	$(REVERSE) $< one two
+	ERROR="expect exactly 1" 	$(REVERSE) $< one two
+	ERROR="[Nn]ot enough" 	$(REVERSE) $<
+	ERROR="require exactly 1" 	$(REVERSE) $<
+	ERROR="got 3" $(REVERSE) $< -- -o 'uf ta' pos
+	ERROR="got 3" $(REVERSE) $< pos -o 'uf ta'
+	ERROR="last one was: 'uf ta'" $(REVERSE) $< pos -o 'uf ta'
+	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-simple-dash.sh"
 test-diy-noop: $(TESTDIR)/test-diy-noop.sh
 	$< LOO --opt_arg > /dev/null
 	$< LOO 1 2 3 3 > /dev/null
@@ -285,11 +399,15 @@ test-diy-noop: $(TESTDIR)/test-diy-noop.sh
 $(TESTDIR)/test-diy-noop.m4: $(TESTDIR)/basic.m4
 	sed -e 's/ARGBASH_GO/ARGBASH_PREPARE/' $< > $@
 
+$(TESTDIR)/test-diy-noop.sh: $(TESTDIR)/test-diy-noop.m4
+	$(ARGBASH_BIN) -c -o "$@" "$<"
+
 test-diy: $(TESTDIR)/test-diy.sh
-	$(generic_regression)
+	$(generic_regression_posix)
+	$(generic_regression_gnu_only)
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-diy.sh"
-$(TESTDIR)/test-diy.m4: $(TESTDIR)/test-diy-noop.m4
-	sed -e 's/ARGBASH_PREPARE.*/&\nparse_commandline "$$@"\nhandle_passed_args_count\nassign_positional_args/' $< > $@
+$(TESTDIR)/test-diy.m4: $(TESTDIR)/test-diy-noop.m4 $(TESTDIR)/test-diy-noop.sh
+	sed -e "s/#.*\[$$/&\n$$(grep -e '#  \S' "$(TESTDIR)/test-diy-noop.sh" | sed -e 's/^#  //' | tr '\n' ';')/" $< > $@
 
 test-wrapping-second_level: $(TESTDIR)/test-wrapping-second_level.sh
 	$< -h | grep -q opt-arg
@@ -369,12 +487,14 @@ test-infinity: $(TESTDIR)/test-infinity.sh
 	$< | grep -q 'POS_S=first,second,third,'
 	$< 1 | grep -q 'POS_S=1,second,third,'
 	$< 1 2 "3 1 4" 4 5 | grep -q 'POS_S=1,2,3 1 4,4,5,'
+	! grep -q handle_passed_args_count $<
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-infinity.sh"
 test-infinity-nodefaults: $(TESTDIR)/test-infinity-nodefaults.sh
 	ERROR="require at least 2" $(REVERSE) $<
 	ERROR="namely: 'pos-arg' (2 times)" $(REVERSE) $<
 	$< 1 "2 3" | grep -q 'POS_S=1,2 3'
 	$< 1 2 "3 1 4" 4 5 | grep -q 'POS_S=1,2,3 1 4,4,5,'
+	grep -q handle_passed_args_count $<
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-infinity-nodefaults.sh"
 test-infinity-mixed: $(TESTDIR)/test-infinity-mixed.sh
 	$< -h | grep -q '<pos-arg-1> \[<pos-arg-2>\] \.\.\. \[<pos-arg-n>\] \.\.\.$$'
@@ -386,6 +506,13 @@ test-leftovers: $(TESTDIR)/test-leftovers.sh
 	$< -h | grep -q '\[-c|--cosi <arg>\] \[--(no-)fear\] \[-m|--more\] \[-h|--help\] <another> \.\.\. $$'
 	$< -c ours -m --more --more --no-fear "ours pos" left "o ver" | grep -q 'MORE=3,OPT_S=ours,FEAR=off,POS_S=ours pos,LEFTOVERS=left,o ver,'
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-leftovers.sh"
+gen-test-infinity-dash: $(TESTDIR)/gen-test-infinity.m4 $(ARGBASH_BIN)
+	ERROR="supported" $(REVERSE) $(ARGBASH_EXEC) --type posix-script $< > /dev/null
+	ERROR="infinite" $(REVERSE) $(ARGBASH_EXEC) --type posix-script $< > /dev/null
+
+gen-test-wrap-dash: $(TESTDIR)/gen-test-wrap.m4 $(ARGBASH_BIN)
+	ERROR="supported" $(REVERSE) $(ARGBASH_EXEC) --type posix-script $< > /dev/null
+
 gen-test-pos: $(TESTDIR)/gen-test-pos.m4 $(ARGBASH_BIN)
 	ERROR="pos-arg" $(REVERSE) $(ARGBASH_EXEC) $< > /dev/null
 
@@ -431,6 +558,16 @@ gen-test-badcall-multi: $(TESTDIR)/gen-test-badcall-multi.m4 $(ARGBASH_BIN)
 	ERROR="3rd argument" $(REVERSE) $(ARGBASH_EXEC) $< > /dev/null
 	ERROR="num of args" $(REVERSE) $(ARGBASH_EXEC) $< > /dev/null
 	ERROR="actual number of" $(REVERSE) $(ARGBASH_EXEC) $< > /dev/null
+
+basic-docopt: $(TESTDIR)/basic.txt
+	grep -q "\[<pos-opt>\]" $<
+	grep -q "\[--opt_arg OPT_ARG\]" $<
+	grep -q "\s-o OPT_ARG, --opt_arg OPT_ARG\s" $<
+	! test -x $<
+
+test-onlyopt-docopt: $(TESTDIR)/test-onlyopt.txt
+	grep -q "\[--opt-repeated OPT-REPEATED\]\.\.\." $<
+	grep -q "\[--incrx\]\.\.\." $<
 
 test-delim-space: $(TESTDIR)/test-delim-space.sh
 	ERROR="unexpected argument '--opt=something'" $(REVERSE) $< --opt=something
@@ -562,7 +699,8 @@ test-group: $(TESTDIR)/test-group.sh
 	ERROR="allowed" $(REVERSE) $< bar
 	@# Assure that there is not the string '_idx' in the script since we don't want indices support in this test
 	! grep -q _idx $<
-	# $< -h | grep action | grep ACTION | grep -q 'foo,baz'
+	$< -h | grep act-ion | grep -q "'foo,baz'"
+	$< -h | grep act-ion | grep -q "'bar bar'"
 	test -z "$(SHELLCHECK)" || $(SHELLCHECK) "$(TESTDIR)/test-group.sh"
 test-group-idx: $(TESTDIR)/test-group-idx.sh
 	$< foo | grep -q "ACT=foo,IDX=0,"

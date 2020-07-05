@@ -4,24 +4,23 @@
 # SC2016: Expressions don't expand in single quotes, use double quotes for that.
 # SC2059 Don't use variables in the printf format string.
 
-version=_ARGBASH_VERSION
-
 
 # DEFINE_SCRIPT_DIR
 # ARG_POSITIONAL_SINGLE([input], [The input template file (pass '-' for stdin)])
 # ARG_OPTIONAL_SINGLE([output], o, [Name of the output file (pass '-' for stdout)], -)
+# ARG_OPTIONAL_BOOLEAN([in-place], [i], [Update a bash script in-place], [off])
 # ARG_OPTIONAL_SINGLE([type], t, [Output type to generate], [bash-script])
-# ARG_OPTIONAL_BOOLEAN([library],, [Whether the input file if the pure parsing library.])
-# ARG_OPTIONAL_SINGLE([strip],, [Determines what to have in the output.], [none])
+# ARG_OPTIONAL_BOOLEAN([library],, [Whether the input file if the pure parsing library])
+# ARG_OPTIONAL_SINGLE([strip],, [Determines what to have in the output], [none])
 # ARG_OPTIONAL_BOOLEAN([check-typos],, [Whether to check for possible argbash macro typos], [on])
 # ARG_OPTIONAL_BOOLEAN([commented], c, [Commented mode - include explanatory comments with the parsing code], [off])
 # ARG_OPTIONAL_REPEATED([search], I, [Directories to search for the wrapped scripts (directory of the template will be added to the end of the list)], ["."])
 # ARG_OPTIONAL_SINGLE([debug],, [(developer option) Tell autom4te to trace a macro])
 # ARG_TYPE_GROUP_SET([content], [content], [strip], [none,user-content,all])
-# ARG_TYPE_GROUP_SET([type], [type], [type], [bash-script,completion,docopt])
+# ARG_TYPE_GROUP_SET([type], [type], [type], [bash-script,posix-script,manpage,manpage-defs,completion,docopt])
 # ARG_DEFAULTS_POS()
-# ARG_VERSION([echo "argbash v$version"])
 # ARG_HELP([Argbash is an argument parser generator for Bash.])
+# ARG_VERSION_AUTO([_ARGBASH_VERSION])
 
 # ARGBASH_GO
 
@@ -78,14 +77,15 @@ interpret_error()
 # $2: The original intended output file
 define_file_metadata()
 {
-	local _defines='' _input_dirname _output_dirname
+	local _defines='' _intended_destination="$ARGBASH_INTENDED_DESTINATION" _input_dirname _output_dirname
+	test -n "$_intended_destination" || _intended_destination="$2"
 
 	_input_dirname="$(dirname "$1")"
 	test "$1" != '-' && _defines="${_defines}m4_define([INPUT_BASENAME], [[$(basename "$1")]])"
 	_defines="${_defines}m4_define([INPUT_ABS_DIRNAME], [[$(cd "$_input_dirname" && pwd)]])"
 
-	_output_dirname="$(dirname "$2")"
-	test "$2" != '-' && _defines="${_defines}m4_define([OUTPUT_BASENAME], [[$(basename "$2")]])"
+	_output_dirname="$(dirname "$_intended_destination")"
+	test "$_intended_destination" != '-' && _defines="${_defines}m4_define([OUTPUT_BASENAME], [[$(basename "$_intended_destination" "$SPURIONS_OUTPUT_SUFFIX")]])"
 	_defines="${_defines}m4_define([OUTPUT_ABS_DIRNAME], [[$(cd "$_output_dirname" && pwd)]])"
 	printf "%s" "$_defines"
 }
@@ -191,6 +191,18 @@ get_parsing_code()
 	echo "$_newerfile"
 }
 
+
+# $1: The output file
+# $2: The output type string
+set_output_permission()
+{
+	if grep -q '\<script\>' <<< "$2"
+	then
+		chmod a+x "$1"
+	fi
+}
+
+
 # MS Windows compatibility fix
 discard=/dev/null
 test -e $discard || discard=NUL
@@ -203,6 +215,11 @@ trap cleanup EXIT
 # If we are reading from stdout, then create a temp file
 if test "$infile" = '-'
 then
+	if test "$_arg_in_place" = 'on'
+	then
+		echo "Cannot use stdin input with --in-place option!" >&2
+		exit 1;
+	fi
 	infile=temp_in_$$
 	_files_to_clean+=("$infile")
 	cat > "$infile"
@@ -222,6 +239,10 @@ then
 fi
 
 test -f "$infile" || _PRINT_HELP=yes die "argument '$infile' is supposed to be a file!" 1
+if test "$_arg_in_place" = on
+then
+	_arg_output="$infile"
+fi
 test -n "$_arg_output" || { echo "The output can't be blank - it is not a legal filename!" >&2; exit 1; }
 outfname="$_arg_output"
 autom4te --version > "$discard" 2>&1 || { echo "You need the 'autom4te' utility (it comes with 'autoconf'), if you have bash, that one is an easy one to get." 2>&1; exit 1; }
@@ -232,7 +253,7 @@ _wrapped_defns=""
 parsing_code="$(get_parsing_code)"
 # Just if the original was m4, we replace .m4 with .sh
 test -n "$parsing_code" && parsing_code_out="${parsing_code:0:-2}sh"
-test "$_arg_library" = off && test -n "$parsing_code" && ($0 --library "$parsing_code" -o "$parsing_code_out")
+test "$_arg_library" = off && test -n "$parsing_code" && ($0 --strip user-content "$parsing_code" -o "$parsing_code_out")
 
 # We may use some of the wrapping stuff, so let's fill the _wrapped_defns
 settle_wrapped_fname "$infile"
@@ -250,7 +271,7 @@ fi
 if test "$outfname" != '-'
 then
 	printf "%s\\n" "$output" > "$outfname"
-	chmod a+x "$outfname"
+	set_output_permission "$outfname" "$_arg_type"
 else
 	printf "%s\\n" "$output"
 fi

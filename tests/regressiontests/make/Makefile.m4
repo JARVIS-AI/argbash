@@ -10,6 +10,7 @@ m4_define([include_test], [m4_do(
 )])
 
 m4_include([tests/tests-base.m4])
+m4_include([tests/tests-docopt.m4])
 m4_include([tests/tests-delimiters.m4])
 m4_include([tests/tests-init.m4])
 m4_include([tests/tests-env.m4])
@@ -18,10 +19,6 @@ m4_include([tests/tests-strict.m4])
 m4_include([tests/tests-getopt.m4])
 
 m4_divert_push(STDOUT1)dnl
-TESTS = 
-SCRIPTS =
-TESTS_GEN =
-
 TESTDIR ?= ../regressiontests
 PHONIES ?=
 
@@ -35,45 +32,94 @@ REVERSE = $(TESTDIR)/reverse
 ARGBASH_EXEC ?= $(ARGBASH_BIN)
 ARGBASH_INIT_EXEC ?= $(ARGBASH_INIT)
 
+%-dash.sh: %.m4 $(ARGBASH_BIN)
+	$(word 2,$^) --type posix-script -o $@ $<
+	[sed -i "s|#!/bin/bash|#!]$(shell which dash)|" $@
+
 %.sh: %.m4 $(ARGBASH_BIN)
 	$(word 2,$^) $< -o $@
+
+%.txt: %.m4 $(ARGBASH_BIN)
+	$(word 2,$^) $< -t docopt --strip all -o $@
 m4_divert_pop(STDOUT1)
 
 m4_divert_push(STDOUT2)dnl
-TESTS += \
-	m4_join([ \
-	], m4_set_list([_TESTS])) \
-	$(NUL)
-TESTS += tests-gen
+TESTS =
+TESTS_GEN =
 
-SCRIPTS += \
+# presumably always-executed and created scripts
+SCRIPTS = \
 	m4_join([ \
 	], m4_set_list([_TEST_SCRIPTS])) \
 	$(NUL)
 
+# bash tests
+TESTS += \
+	m4_join([ \
+	], m4_set_list([BASH_TESTS])) \
+	$(NUL)
+
+# docopt tests
+TESTS += \
+	m4_join([ \
+	], m4_set_list([DOCOPT_TESTS])) \
+	$(NUL)
+
 TESTS_GEN += \
 	m4_join([ \
-	], m4_set_list([_TEST_GEN])) \
+	], m4_set_list([_TEST_GEN_BASH])) \
 	$(NUL)
+
+SCRIPTS += \
+	m4_join([ \
+	], m4_set_list([_TEST_BASH_SCRIPTS]),m4_set_list([_TEST_DOCOPT_SCRIPTS])) \
+	$(NUL)
+
+ifneq "$(shell which dash 2> /dev/null)" ""
+
+TESTS += \
+	m4_join([ \
+	], m4_set_list([DASH_TESTS])) \
+	$(NUL)
+
+TESTS_GEN += \
+	m4_join([ \
+	], m4_set_list([_TEST_GEN_DASH])) \
+	$(NUL)
+
+SCRIPTS += \
+	m4_join([ \
+	], m4_set_list([_TEST_DASH_SCRIPTS])) \
+	$(NUL)
+
+endif
+
+TESTS += tests-gen
 [
-define generic_regression
+define generic_regression_posix
 	$< LOO | grep -q 'POS_S=LOO',
 	$< "LOO BAR" | grep -q 'POS_S=LOO BAR,'
+	$< -b LOO | grep -q BOOL=on,
 	$< LOO | grep -q BOOL=off,
-	$< LOO --boo_l | grep -q BOOL=on,
-	$< LOO --no-boo_l | grep -q BOOL=off,
 	$< LOO | grep -q 'OPT_S=opt_arg_default lolo',
-	$< LOO --opt_arg PoS | grep -q OPT_S=PoS,
-	$< LOO --opt_arg "PoS sob" | grep -q 'OPT_S=PoS sob,'
-	$< LOO --opt_arg="PoS sob" | grep -q 'OPT_S=PoS sob,'
 	$< LOO UFTA | grep -q 'POS_OPT=UFTA,'
-	$< LOO --boo_l --boo_l | grep -q 'POS_OPT=pos_opt_default lala,'
 	$< LOO | grep -q 'OPT_INCR=2,'
-	$< LOO --opt-incr | grep -q 'OPT_INCR=3,'
-	$< LOO --opt-incr -i | grep -q 'OPT_INCR=4,'
+	$< -ii LOO | grep -q 'OPT_INCR=4,'
 	$< -h | grep -- pos_arg | grep -q pos_arg_help
 	$< -h | grep -- pos-opt | grep -q @pos-opt-arg@
 	$< -h | grep -q ' \[<pos-opt>\]'
+endef
+
+define generic_regression_gnu_only
+	$< LOO --opt_arg "PoS sob" | grep -q 'OPT_S=PoS sob,'
+	$< --opt_arg PoS LOO | grep -q OPT_S=PoS,
+	$< --opt_arg="PoS sob" LOO | grep -q 'OPT_S=PoS sob,'
+	$< LOO -b | grep -q BOOL=on,
+	$< LOO --boo_l | grep -q BOOL=on,
+	$< LOO --boo_l --boo_l | grep -q 'POS_OPT=pos_opt_default lala,'
+	$< --no-boo_l LOO | grep -q BOOL=off,
+	$< --opt-incr -i LOO | grep -q 'OPT_INCR=4,'
+	$< LOO --opt-incr | grep -q 'OPT_INCR=3,'
 	$(REVERSE) $< LOO --opt_arg 2> /dev/null
 endef
 ]

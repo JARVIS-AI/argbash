@@ -242,9 +242,36 @@ Description                     ``--type`` value                ``--strip`` valu
 ============================    =======================         ==========================
 Bash script                     bash-script                     none
 Bash script parsing section     bash-script                     user-content
+POSIX script                    posix-script                    none
+POSIX script parsing section    posix-script                    user-content
 Bash completion                 completion                      all
 docopt help message             docopt                          all
+manpage template                manpage                         all
+manpage template definitions    manpage-defs                    all
 ============================    =======================         ==========================
+
+
+.. _posix:
+
+POSIX script
+++++++++++++
+
+Argbash is able to generate code that will work with POSIX shells.
+Due to limitations of those shells (mainly absence of arrays), the generated interface features are limited:
+
+* All options have to have short option.
+  Those short options are the only user-visible element of the interface.
+
+* Mixing optional and positional arguments is not supported, all arguments that follow the first positional argument are considered positional.
+
+* Certain arguments are not supported:
+
+  * Repeated arguments.
+  * Multi-valued argumetns.
+
+Internally, Argbash uses the ``getopts`` shell builtin to handle optional arguments parsing.
+Then, checks for positional arguments are generated and applied, ditto for positional arguments processing, and the help message is generated.
+As a result, the parsing section of a POSIX script is shorter.
 
 
 Bash completion
@@ -258,7 +285,7 @@ The basename is inferred either from the source filename, or from the destinatio
 .. note::
 
    The general recommendation is not to save your scripts to files without suffixes.
-   Keep the ``.sh`` suffixe only for files that are Bash modules.
+   Keep the ``.sh`` suffix only for files that are Bash modules.
 
 After you generate the completion file, put it in the appropriate place (which may vary depending on your environment).
 In order to use it right away, simply source it.
@@ -270,6 +297,12 @@ Typically, you generate bash completion ``my-script.sh`` from the generated scri
   $ argbash my-script --type completion --strip all -o my-script.sh
 
 and you move the created completion file ``my-script.sh`` to ``/etc/bash_completion.d/`` directory.
+
+.. note::
+
+   Completion is not implemented for positional arguments.
+   The corresponding Bash completion algorithm has to be much more complex in order to distinguish between 1st, 2nd etc. positional arguments.
+
 
 .. _docopt_output:
 
@@ -288,6 +321,27 @@ Typically, you generate docopt output to the standard output from the generated 
 .. code-block:: shell-session
 
   $ argbash my-script --type docopt --strip all
+
+
+Manpage output
+++++++++++++++
+
+Argbash can generate source for the manual page for your script.
+There are two files in the process --- the template, and definitions.
+Those two files are in the `reStructuredText <http://docutils.sourceforge.net/rst.html>`_ format, and the template is supposed to be processed by the `rst2man <http://docutils.sourceforge.net/sandbox/manpage-writer/rst2man.txt>`_ utility.
+
+The manpage template is supposed to be generated as script's metadata change, definitions are required to be maintained manually, as they are supposed to contain content that is not present in the script.
+You can regenerate the template using the ``manpage`` output, while you are probably going to use the ``manpage-defs`` once to get you kickstarted and then continue to maintain it manually.
+
+So given a argbash-powered script or m4 file, your manpage workflow will typically look like this:
+
+.. code-block:: shell-session
+
+  $ argbash my-script --type manpage-defs --strip all -o my-script-defs.rst
+  $ argbash my-script --type manpage --strip all -o my-script.rst
+  $ vim my-script-defs.rst  # Edit the definitions file
+  $ rst2man my-script.rst > my-script.1
+  $ man ./my-script.1
 
 
 .. _api_change:

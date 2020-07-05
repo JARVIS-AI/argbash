@@ -1,5 +1,20 @@
-m4_include([list.m4])
 
+m4_set_delete([__FILES_ALREADY_INCLUDED__])
+m4_set_add([__FILES_ALREADY_INCLUDED__], __file__)
+dnl
+dnl $1: The filename to include
+m4_define([m4_include_once], [m4_do(
+	[m4_set_contains([__FILES_ALREADY_INCLUDED__], [$1], [], 
+		[m4_set_add([__FILES_ALREADY_INCLUDED__], [$1])m4_include([$1])])],
+)])
+
+
+m4_include_once([list.m4])
+
+
+m4_define([_ENDL_],
+	[m4_for(_, 1, m4_default([$1], 1), 1, [
+])])
 
 m4_define([_IF_DIY_MODE],
 	[m4_if(_DIY_MODE, 1, [$1], [$2])])
@@ -45,7 +60,9 @@ m4_define([_CHECK_INTEGER_TYPE],
 
 
 dnl
-dnl Encloses string into "" if its first char is not ' or "
+dnl If first char of string is not ' or " enclose it into ""
+dnl and escape " with \".
+dnl
 dnl The string is also []-quoted
 dnl Property: Quoting a blank input results in blank result
 dnl to AVOID it, pass string like ""ls -l or "ls" -l
@@ -54,9 +71,7 @@ dnl $1: String to quote
 m4_define([_sh_quote], [m4_do(
 	[m4_if(
 		[$1], , ,
-		m4_index([$1], [']), 0, [[$1]],
-		m4_index([$1], ["]), 0, [[$1]],
-		[["$1"]])],
+		m4_dquote(_sh_quote_also_blanks([$1])))],
 )])
 
 
@@ -69,7 +84,6 @@ m4_define([_sh_quote_also_blanks], [m4_do(
 		m4_index([$1], ["]), 0, [[$1]],
 		[["$1"]])],
 )])
-
 
 dnl
 dnl Define a macro that is part of the public API
@@ -95,24 +109,53 @@ dnl Otherwise, act like _COMM_BLOCK
 m4_define([_POSSIBLY_REPEATED_COMMENT_BLOCK], [m4_ifndef([_COMMENT_$1_LOCATION], [m4_do(
 	[m4_define([_COMMENT_$1_LOCATION], [[$2]])],
 	[_COMM_BLOCK($3, m4_shiftn(3, $@))],
-)], [m4_do(
-	[_COMM_BLOCK([$3], m4_quote([# ]m4_indir([_COMMENT_$1_LOCATION])))],
+)], [m4_do(m4_ifblank([$2], ,
+		[_COMM_BLOCK([$3], m4_quote([# ]m4_indir([_COMMENT_$1_LOCATION])))]),
 )])])
 
-m4_define([_COMM_BLOCK], _CHECK_INTEGER_TYPE(1, [depth of indentation])[m4_ifdef([COMMENT_OUTPUT], [_JOIN_INDENTED([$1], m4_shift(m4_dquote_elt($@)))])])
+
+m4_define([_COMMENT_PREFIX_NOTHING], [[$1],])
+m4_define([_COMMENT_PREFIX_HASH], [[# $1],])
+
+
+m4_define([_COMM_BLOCK], [__COMM_BLOCK([_COMMENT_PREFIX_NOTHING], $@)])
+m4_define([_COMM_BLOCK_HASH], [__COMM_BLOCK([_COMMENT_PREFIX_HASH], $@)])
+
+m4_define([_IF_COMMENTED_OUTPUT], [m4_ifdef([COMMENT_OUTPUT], [[$1]], [[$2]])])
+m4_define([__COMM_BLOCK], _CHECK_INTEGER_TYPE(2, [depth of indentation])[m4_ifdef([COMMENT_OUTPUT], [_JOIN_INDENTED([$2], m4_map_args([$1], m4_shiftn(2, m4_dquote_elt($@))))])])
 m4_define([_COMMENT_CHAIN], [m4_ifdef([COMMENT_OUTPUT], [$@])])
 m4_define([_COMMENT], [m4_ifdef([COMMENT_OUTPUT], [$1])])
 
 
 dnl
 dnl $1: The text to substitute
+dnl The indentation is a display indentation - not source code one.
+m4_define([_SUBSTITUTE_LF_FOR_NEWLINE_WITH_DISPLAY_INDENT_AND_ESCAPE_DOUBLEQUOTES],
+	[SUBSTITUTE_LF_FOR_NEWLINE_WITH_INDENT_AND_ESCAPE_DOUBLEQUOTES([$1], [		])])
+
+
+dnl
+dnl $1: The text to substitute
+dnl $2: The width of space indentation
+dnl The indentation is a display indentation - not source code one.
+m4_define([_SUBSTITUTE_LF_FOR_NEWLINE_WITH_SPACE_INDENT_AND_ESCAPE_DOUBLEQUOTES],
+	[SUBSTITUTE_LF_FOR_NEWLINE_WITH_INDENT_AND_ESCAPE_DOUBLEQUOTES([$1], m4_if([$2], 0, [], [m4_for(_, 1, [$2], 1, [ ])]))])
+
+
+dnl
+dnl $1: The text to substitute
+dnl $2: The indent for the new line.
 dnl Regexp: Find beginning of backslashes, match for pairs, and if \\n is left, then substitute it for literal newline.
-m4_define([_SUBSTITUTE_LF_FOR_NEWLINE_AND_INDENT], [m4_bpatsubst([[$1]], [\([^\\]\)\(\\\\\)*\\n],  [\1\2
-		])])
+dnl The indentation is a display indentation - not source code one.
+m4_define([SUBSTITUTE_LF_FOR_NEWLINE_WITH_INDENT_AND_ESCAPE_DOUBLEQUOTES],
+	[m4_bpatsubsts([[$1]], 
+		[\([^\\]\)\(\\\\\)*\\n], m4_expand([[\1\2]_ENDL_()$2]),
+		[\([^\]\)"], [\1\\"])])
 
 
 m4_define([_CHECK_PASSED_ARGS_COUNT_TOO_FEW],
 	[m4_fatal([You have passed $2 arguments to macro $1, while it requires at least $3.]m4_ifnblank([$4], [ Call it like: $4]))])
+
 
 m4_define([_CHECK_PASSED_ARGS_COUNT_TOO_MANY],
 	[m4_fatal([You have passed $2 arguments to macro $1, while it accepts at most $3.]m4_ifnblank([$4], [ Call it like: $4]))])
@@ -164,11 +207,6 @@ m4_define([_INDENT_MORE], [m4_do(
 	[m4_list_destroy([_TLIST])],
 )])
 
-
-dnl Take precaution that if the indentation depth is 0, nothing happens
-m4_define([_SET_INDENT], [m4_define([_INDENT_],
-	[m4_for(_, 1, m4_default($][1, 1), 1,
-		[[$1]])])])
 
 m4_define([_SET_INDENT], [__SET_INDENT([$1], $[]1)])
 
@@ -243,7 +281,7 @@ m4_define([DEFINE_MINIMAL_POSITIONAL_VALUES_COUNT],
 
 dnl $1: Error
 m4_define([INFERRED_BASENAME],
-	[m4_ifdef([OUTPUT_BASENAME], [[_STRIP_SUFFIX(OUTPUT_BASENAME)]],
+	[m4_ifdef([OUTPUT_BASENAME], [_STRIP_SUFFIX(OUTPUT_BASENAME)],
 		[m4_ifdef([INPUT_BASENAME], [[_STRIP_SUFFIX(INPUT_BASENAME)]], [$1])])])
 
 
@@ -264,4 +302,23 @@ m4_define([_LIST_LONGEST_TEXT_LENGTH], [m4_do(
 	[m4_list_foreach([$1], [_item], [m4_if(m4_eval(_longest_label_len < m4_len(_item)), 1, [m4_define([_longest_label_len], m4_len(_item))])])],
 	[_longest_label_len],
 	[m4_popdef([_longest_label_len])],
+)])
+
+
+m4_define([_CAPITALIZE], [m4_translit([[$1]], [a-z], [A-Z])])
+
+
+dnl
+dnl $1: What to underline
+dnl $2: By what to underline
+dnl $3: By what to overline (optional)
+m4_define([UNDERLINE], [m4_do(
+	[m4_if(m4_len([$1]), 0, , [m4_if([$3], , , [m4_do(
+		[m4_for(idx, 1, m4_len([$1]), 1, [$3])],
+		[_ENDL_()],
+	)])])],
+	[[$1]],
+	[_ENDL_()],
+	[m4_if(m4_len([$1]), 0, ,
+		[m4_for(idx, 1, m4_len([$1]), 1, [$2])])],
 )])
